@@ -36,9 +36,15 @@
     0))
 
 (defn get-die-effects [dice]
-  {:punches (let [punch-dice (filter (comp #{:punch :punches} current-face) dice)]
-              {:value (apply + (map (comp punch-value current-face) punch-dice))
-               :die-ids (set (map :id punch-dice))})})
+  (let [punch-dice (filter (comp #{:punch :punches} current-face) dice)
+        shield-dice (filter (comp #{:shield} current-face) dice)]
+    (cond-> {}
+      (seq punch-dice)
+      (assoc :punches {:value (apply + (map (comp punch-value current-face) punch-dice))
+                       :die-ids (set (map :id punch-dice))})
+      (seq shield-dice)
+      (assoc :shields {:value (* 2 (count shield-dice))
+                       :die-ids (set (map :id shield-dice))}))))
 
 (defn get-initial-events [seed]
   (let [rng (java.util.Random. seed)]
@@ -82,11 +88,11 @@
     [:set-die-locked? opts] (assoc-in game [:dice (:die-id opts) :locked?] (:locked? opts))
     [:set-player-health health] (assoc-in game [:player :health] health)
     [:set-player-rerolls n] (assoc game :rerolls n)
+    [:set-player-shields opts] (assoc-in game [:player :shields] (:value opts))
     [:set-seed seed] (assoc game :seed seed)
     [:spent-reroll opt] (assoc game :spent-rerolls (:spent-rerolls opt))
     [:started-round opt] (assoc game :round-number (:round-number opt))
-    [:zombies-planned-their-moves opt] (update-zombie-intentions game opt)
-    ))
+    [:zombies-planned-their-moves opt] (update-zombie-intentions game opt)))
 
 (defn reroll-allowed? [{:keys [rerolls spent-rerolls]} n]
   (and
@@ -113,10 +119,9 @@
   (when (get-in game [:dice die-id])
     [[:set-die-locked? {:die-id die-id, :locked? locked?}]]))
 
-(defn deliver-package-of-punches [game target]
+(defn deliver-package-of-punches [game target {:keys [punches]}]
   (when-let [zombie (get-in game [:zombies target])]
-    (let [{:keys [punches]} (get-die-effects (vals (:dice game)))
-          damage (min (:value punches)
+    (let [damage (min (:value punches)
                       (:current (:health zombie)))]
       (cond-> [[:punched-zombie {:zombie-id (:id zombie)
                                  :damage damage
@@ -185,8 +190,17 @@
      [(roll-dice game rng (vals (:dice game)))]
      [[:set-seed (inc (:seed game))]])))
 
+(defn activate-shields [effects]
+  (when (:shields effects)
+    [[:set-player-shields (:shields effects)]]))
+
+(defn create-dice-events [game target]
+  (let [die-effects (get-die-effects (vals (:dice game)))]
+    (concat (deliver-package-of-punches game target die-effects)
+            (activate-shields die-effects))))
+
 (defn finish-turn [game {:keys [target]}]
-  (let [dice-events (deliver-package-of-punches game target)
+  (let [dice-events (create-dice-events game target)
         game (reduce update-game game dice-events)]
     (concat dice-events
             (perform-zombie-turns game)

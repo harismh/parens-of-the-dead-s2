@@ -10,6 +10,16 @@
 ;; die effects
 
 (deftest get-die-effects
+  (testing "shields"
+    (is (= (sut/get-die-effects
+            [{:id :die-0
+              :faces faces
+              :current-face 2}
+             {:id :die-1
+              :faces faces
+              :current-face 2}])
+           {:shields {:value 4 :die-ids #{:die-0 :die-1}}})))
+
   (testing "two separate punches"
     (is (= (sut/get-die-effects
             [{:id :die-0
@@ -47,6 +57,10 @@
 (deftest update-game--set-player-rerolls
   (is (= (sut/update-game {} [:set-player-rerolls 2])
          {:rerolls 2})))
+
+(deftest update-game--set-player-shields
+  (is (= (sut/update-game {} [:set-player-shields {:value 2}])
+         {:player {:shield 2}})))
 
 (deftest update-game--spent-reroll
   (is (= (sut/update-game {} [:spent-reroll {:rerolls 3
@@ -187,9 +201,7 @@
            [[:dice-rolled [{:die-id :die-0
                             :from 1
                             :to 2
-                            :roll-id 0}]]])))
-
-  )
+                            :roll-id 0}]]]))))
 
 (deftest perform-command--set-die-locked?
   (is (= (->> (perform-command {:dice {:die-0 {:id :die-0}}}
@@ -246,6 +258,18 @@
                               :die-ids #{:die-0 :die-1}
                               :health {:max 8 :current 2}}]
             [:killed-zombie :zombie-1]])))
+
+  (testing "Activates shields"
+    (is (= (->> (perform-command
+                 {:player {:health {:max 7 :current 5}}
+                  :dice {:die-0 {:id :die-0
+                                 :faces faces
+                                 :current-face 2}}}
+                 [:finish-turn {:target :zombie-1}])
+                (filter-events #{:set-player-shields})
+                first)
+           [:set-player-shields {:value 2 :die-ids #{:die-0}}])))
+
 
   (testing "Zombies love punching"
     (is (= (->> (perform-command

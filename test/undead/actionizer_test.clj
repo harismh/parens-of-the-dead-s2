@@ -154,3 +154,15 @@
 (deftest actionize--killed-player
   (is (= (sut/event->actions [:killed-player])
          [[:assoc-in [:game-over?] true]])))
+
+(deftest actionize--set-player-shields
+  (is (= (sut/event->actions [:set-player-shields {:value 2, :die-ids #{:die-3}}])
+         [[:assoc-in [:dice :die-3 :die-class] "using"]
+          [:assoc-in [:player :shields] 1]
+          [:wait 70]
+          [:assoc-in [:player :shields] 2]
+          [:wait 70]
+          [:assoc-in [:dice :die-3 :die-class] "used"]]))
+
+  (is (= (sut/event->actions [:set-player-shields {:value 0}])
+         [[:assoc-in [:player :shields] 0]])))

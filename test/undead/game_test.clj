@@ -397,6 +397,14 @@
                 (filter-events #{:replenished-rerolls}))
            [[:replenished-rerolls {:rerolls 3}]])))
 
+  (testing "Please don't take my shields!!! No can do"
+    (is (= (->> (perform-command
+                 {:rerolls 3
+                  :player {:shields 2}}
+                 [:finish-turn {:target :zombie-1}])
+                (filter-events #{:set-player-shields}))
+           [[:set-player-shields {:value 0}]])))
+
   (testing "Starts new round"
     (is (= (->> (perform-command
                  {:rerolls 3 :round-number 2}
@@ -423,7 +431,7 @@
 
   (testing "Replans the zombies"
     (is (= (->> (perform-command
-                 {:round-number 3
+                 {:round-number 4
                   :zombies {:zombie-1
                             {:id :zombie-1
                              :kind :biker
@@ -433,4 +441,4 @@
                              :health {:max 8 :current 8}}}}
                  [:finish-turn {:target :zombie-1}])
                 (filter-events #{:zombies-planned-their-moves}))
-           [[:zombies-planned-their-moves {:zombie-1 [:punches :punch]}]]))))
+           [[:zombies-planned-their-moves {:zombie-1 [:punch :punch]}]]))))

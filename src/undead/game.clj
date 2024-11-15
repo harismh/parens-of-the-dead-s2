@@ -186,6 +186,8 @@
   (let [rng (java.util.Random. (:seed game))]
     (concat
      (unlock-dice game)
+     (when (< 0 (:shields (:player game) 0))
+       [[:set-player-shields {:value 0}]])
      [[:replenished-rerolls (select-keys game [:rerolls])]]
      [(roll-dice game rng (vals (:dice game)))]
      [[:set-seed (inc (:seed game))]])))

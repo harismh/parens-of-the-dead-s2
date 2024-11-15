@@ -102,6 +102,20 @@
   (for [[id intentions] zombie-plans]
     [:assoc-in [:zombies id :intention-classes] intentions]))
 
+(defn set-player-shields [{:keys [value die-ids]}]
+  (concat
+   (for [id die-ids]
+     [:assoc-in [:dice id :die-class] "using"])
+   (if (= value 0)
+     [[:assoc-in [:player :shields] 0]]
+     (mapcat
+      (fn [i]
+        [[:assoc-in [:player :shields] (inc i)]
+         [:wait 70]])
+      (range value)))
+   (for [id die-ids]
+     [:assoc-in [:dice id :die-class] "used"])))
+
 (defn event->actions [event]
   (match event
     [:added-dice dice] (add-dice dice)
@@ -114,6 +128,7 @@
     [:set-die-locked? opts] (set-die-locked? opts)
     [:set-player-health health] (set-player-health health)
     [:set-player-rerolls n] (prepare-rerolls {:rerolls n})
+    [:set-player-shields opts] (set-player-shields opts)
     [:set-seed seed] nil
     [:spent-reroll opts] (prepare-rerolls opts)
     [:started-round opts] [[:assoc-in [:round-number] (:round-number opts)]]

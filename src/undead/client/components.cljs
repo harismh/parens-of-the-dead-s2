@@ -32,8 +32,13 @@
     [:div.lock {:on-click lock-command}
      [:div.padlock]]]])
 
-(d/defcomponent Player [{:keys [hearts class]}]
+(d/defcomponent Player [{:keys [hearts class shields]}]
   [:div
+   (when (and shields (< 0 shields))
+     [:div.player.shields
+      {:leaving-style {:opacity 0 :transition "opacity 300ms"}}
+      (for [_ (range shields)]
+        [:div.shield  {:leaving-style {:opacity 0 :transition "opacity 200ms"}}])])
    [:div.player-health {:class class}
     [:div.player-punches
      (for [i (range 1 6)]
